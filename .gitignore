@@ -1,0 +1,39 @@
+syntax: glob
+
+# Mac OS X
+**DS_Store
+
+# Xcode 
+*.mode1v3
+*.pbxuser
+*.xccheckout
+*.moved-aside
+*.mode2v3
+xcuserdata
+*.perspectivev3
+project.xcworkspace
+Groupon.xcworkspace/xcshareddata/Groupon.xccheckout
+*.xcscmblueprint
+
+# AppCode
+.idea/
+
+#Generated files
+*.pyc
+
+# Temporary files
+*.swp
+
+# Other
+build*
+data_archive*
+*.kpf
+*.wpr
+*.wpu
+*.db
+*.rej
+*.orig
+3rd_party
+DerivedData/
+
+
