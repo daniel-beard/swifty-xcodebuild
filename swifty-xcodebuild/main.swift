@@ -33,7 +33,7 @@ extension String {
 }
 
 
-class SwiftyXcodebuild {
+final class SwiftyXcodebuild {
     
     //MARK: Constants
     let kDefaultInputFile = "xcodebuild.log"
@@ -55,6 +55,11 @@ class SwiftyXcodebuild {
         "c\\+\\+",
         "cc"
     ]
+    let kEscapedSpace = "🌎"
+    
+    //MARK: Regex's
+    let findUnsafeRegex = "[ \"\\\\]"
+    let findQuotingRegex = "[\'\"\\\\]"
     
     //MARK: Properties
     var pchDictionary = [String: String]()
@@ -64,8 +69,7 @@ class SwiftyXcodebuild {
         guard input.characters.count > 0 else {
             return "\"\""
         }
-        let findUnsafe = "[ \"\\\\]"
-        if input.match(findUnsafe) {
+        if input.match(findUnsafeRegex) {
             return "\"" + input.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         } else {
             return input
@@ -73,21 +77,23 @@ class SwiftyXcodebuild {
     }
     
     func tokenizeCommand(input: String) -> [String] {
-        let findQuoting = "[\'\"\\\\]"
-        if input.match(findQuoting) {
+        if input.match(findQuotingRegex) {
             //TODO: This is a really dumb, should fix, might also have to handle other cases like single quote and double quote.
             // Escaped space = 🌎
-            let escapedInput = input.replace("\\ ", "🌎")
-            var output = escapedInput.split(" ")
-            output = output.map { $0.replace("🌎", " ").strip() }.filter { $0.characters.count > 0 }
-            return output
-            
+            let escapedInput = input.replace("\\ ", kEscapedSpace)
+            let output = escapedInput.split(" ")
+            var result = [String]()
+            for string in output {
+                if string.characters.count > 0 {
+                    result.append(string.replace(kEscapedSpace, " ").strip())
+                }
+            }
+            return result
         } else {
             return input.strip().split(" ").map { $0.strip() }
         }
     }
     
-    //TODO: Needs testing.
     func registerSourceForPTHFile(clangCommand: String, directory: String) {
         let tokens = tokenizeCommand(clangCommand)
         var srcFile = ""
@@ -226,7 +232,9 @@ class SwiftyXcodebuild {
 
 let swifty = SwiftyXcodebuild()
 //let directory = swifty.clangQuote("/Users/lqi/Projects/LQRDG/oclint-sample-projects/SVProject/Pods")
-//let json: JSON = ["directory": directory]
+//let json: JSON = ["directory": "http://test.com/other"]
+//let string = NSString(data: try! json.rawData(), encoding: NSUTF8StringEncoding)
+//print(string)
 //print(json.rawString()!.replace("\\/", "/"))
 let inputFile = "/Users/dbeard/xcodebuild.log"
 let outputFile = "/Users/dbeard/compile_commands.json"
