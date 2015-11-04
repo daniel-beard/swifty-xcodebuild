@@ -32,6 +32,25 @@ extension String {
     }
 }
 
+final class OutputStreamer {
+    
+    private let outputStreamer: NSOutputStream
+    
+    init(outputFile: String) {
+        outputStreamer = NSOutputStream(toFileAtPath: outputFile, append: true)!
+        outputStreamer.open()
+    }
+    
+    func write(string: String) {
+        let data: NSData = string.dataUsingEncoding(NSUTF8StringEncoding)!
+        outputStreamer.write(UnsafePointer<UInt8>(data.bytes), maxLength: data.length)
+    }
+    
+    func close() {
+        outputStreamer.close()
+    }
+}
+
 
 final class SwiftyXcodebuild {
     
@@ -135,7 +154,6 @@ final class SwiftyXcodebuild {
         
         var tokenGenerator = tokens.generate()
         repeat {
-            
             guard let token = tokenGenerator.next() else { break }
             if token == "-include" {
                 guard let includeFile = tokenGenerator.next() else { break }
@@ -161,7 +179,7 @@ final class SwiftyXcodebuild {
                 command.append(clangQuote(token))
             }
         } while true
-        
+       
         let json: JSON = ["directory": directory, "file": Path(sourceFile).normalize().asString(), "command": command.joinWithSeparator(" ")]
         return json
     }
@@ -172,8 +190,11 @@ final class SwiftyXcodebuild {
         let processPCHRegex = "ProcessPCH"
         let supportedCompilersString = kSupportedCompilers.joinWithSeparator("|")
         let clangCommandRegex = "(\(supportedCompilersString)) .* -c .* -o "
+        var isFirstCommand = true
         
-        var jsonArray = [JSON]()
+        let outputPath = Path(outputFile)
+        let outputStreamer = OutputStreamer(outputFile: outputFile)
+        outputStreamer.write("[")
         
         // Open input file for reading
         if let lines = StreamReader(path: inputFile) {
@@ -191,8 +212,13 @@ final class SwiftyXcodebuild {
                     repeat {
                         guard let clangCommandLine = lines.nextLine() else { break loop }
                         if clangCommandLine.match(clangCommandRegex) {
-                            let outputRecord = processClangCommand(clangCommandLine, directory: directory)
-                            jsonArray.append(outputRecord)
+                            autoreleasepool {
+                                if !isFirstCommand { outputStreamer.write(",\n") }
+                                let clangOutput = processClangCommand(clangCommandLine, directory: directory)
+                                let jsonString = "\(clangOutput.rawString()!.replace("\\/", "/"))\n"
+                                outputStreamer.write(jsonString)
+                                isFirstCommand = false
+                            }
                         } else {
                             continue
                         }
@@ -220,33 +246,44 @@ final class SwiftyXcodebuild {
                 }
             } while true
         }
-        
-        // Write to output file
-        let json = JSON(jsonArray).rawString()!.replace("\\/", "/")
-        try! Path(outputFile).write(json)
+        outputStreamer.write("]")
+        outputStreamer.close()
+
         print("Wrote output file successfully")
     }
     
 }
 
-
-let swifty = SwiftyXcodebuild()
-//let directory = swifty.clangQuote("/Users/lqi/Projects/LQRDG/oclint-sample-projects/SVProject/Pods")
-//let json: JSON = ["directory": "http://test.com/other"]
-//let string = NSString(data: try! json.rawData(), encoding: NSUTF8StringEncoding)
-//print(string)
-//print(json.rawString()!.replace("\\/", "/"))
-let inputFile = "/Users/dbeard/xcodebuild.log"
-let outputFile = "/Users/dbeard/compile_commands.json"
-swifty.convert(inputFile, outputFile: outputFile)
-
-//When operating in POSIX mode, shlex will try to obey to the following parsing rules.
-//
-//Quotes are stripped out, and do not separate words ("Do"Not"Separate" is parsed as the single word DoNotSeparate);
-//Non-quoted escape characters (e.g. '\') preserve the literal value of the next character that follows;
-//Enclosing characters in quotes which are not part of escapedquotes (e.g. "'") preserve the literal value of all characters within the quotes;
-//Enclosing characters in quotes which are part of escapedquotes (e.g. '"') preserves the literal value of all characters within the quotes, with the exception of the characters mentioned in escape. The escape characters retain its special meaning only when followed by the quote in use, or the escape character itself. Otherwise the escape character will be considered a normal character.
-//EOF is signaled with a None value;
-//Quoted empty strings ('') are allowed;
-
-
+autoreleasepool {
+    
+    // Check input arguments
+    let args = Process.arguments
+    if args.count != 3 {
+        print("Usage swifty-xcodebuild [input-file] [output-file]")
+        exit(2)
+    }
+    
+    let swifty = SwiftyXcodebuild()
+    let inputFile = args[1]
+    let outputFile = args[2]
+    
+    // Remove output file if it already exists
+    let outputPath = Path(outputFile)
+    if outputPath.exists {
+        do {
+            try outputPath.delete()
+        } catch {
+            print("File already exists at output path, but could not be removed.")
+            exit(2)
+        }
+    }
+    
+    // Check that input file exists
+    let inputPath = Path(inputFile)
+    if !inputPath.exists {
+        print("Input file does not exist!")
+        exit(3)
+    }
+    
+    swifty.convert(inputFile, outputFile: outputFile)
+}
