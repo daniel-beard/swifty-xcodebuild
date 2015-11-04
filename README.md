@@ -8,8 +8,8 @@ swifty-xcodebuild
 
 - Capture output of xcodebuild
 
-    xcodebuild <options> | tee xcodebuild.log
+    `xcodebuild <options> | tee xcodebuild.log`
     
 - Run swifty-xcodebuild
 
-    ./swifty-xcodebuild xcodebuild.log compile_commands.json
+    `./swifty-xcodebuild xcodebuild.log compile_commands.json`
