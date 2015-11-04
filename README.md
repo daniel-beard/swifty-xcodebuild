@@ -13,3 +13,6 @@ swifty-xcodebuild
 - Run swifty-xcodebuild
 
     `./swifty-xcodebuild xcodebuild.log compile_commands.json`
+
+## License
+MIT
