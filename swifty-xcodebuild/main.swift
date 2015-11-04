@@ -201,48 +201,48 @@ final class SwiftyXcodebuild {
             defer { lines.close() }
             
             loop: repeat {
-                guard let logLine = lines.nextLine() else { break }
-                
-                // CompileC
-                if logLine.match(compileCRegex) {
-                    guard let directoryLine = lines.nextLine() else { break loop }
-                    let directory = readDirectory(directoryLine)
+                guard let logLine = lines.nextLine() else { break loop }
+                autoreleasepool {
                     
-                    // Loop through clang commands
-                    repeat {
-                        guard let clangCommandLine = lines.nextLine() else { break loop }
-                        if clangCommandLine.match(clangCommandRegex) {
-                            autoreleasepool {
-                                if !isFirstCommand { outputStreamer.write(",\n") }
-                                let clangOutput = processClangCommand(clangCommandLine, directory: directory)
-                                let jsonString = "\(clangOutput.rawString()!.replace("\\/", "/"))\n"
-                                outputStreamer.write(jsonString)
-                                isFirstCommand = false
+                    // CompileC
+                    if logLine.match(compileCRegex) {
+                        guard let directoryLine = lines.nextLine() else { return }
+                        let directory = readDirectory(directoryLine)
+                        
+                        // Loop through clang commands
+                        repeat {
+                            guard let clangCommandLine = lines.nextLine() else { return }
+                            if clangCommandLine.match(clangCommandRegex) {
+                                autoreleasepool {
+                                    if !isFirstCommand { outputStreamer.write(",\n") }
+                                    let clangOutput = processClangCommand(clangCommandLine, directory: directory)
+                                    let jsonString = "\(clangOutput.rawString()!.replace("\\/", "/"))\n"
+                                    outputStreamer.write(jsonString)
+                                    isFirstCommand = false
+                                }
+                            } else {
+                                continue
                             }
-                        } else {
-                            continue
-                        }
-                        break
-                    } while true
-                    continue
-                }
-                
-                // ProcessPCH
-                if logLine.match(processPCHRegex) {
-                    guard let directoryLine = lines.nextLine() else { break loop }
-                    let directory = readDirectory(directoryLine)
+                            break
+                        } while true
+                    }
                     
-                    // Loop through clang commands
-                    repeat {
-                        guard let clangCommandLine = lines.nextLine() else { break loop }
-                        if clangCommandLine.match(clangCommandRegex) {
-                            registerSourceForPTHFile(clangCommandLine, directory: directory)
-                        } else {
-                            continue
-                        }
-                        break
-                    } while true
-                    continue
+                    // ProcessPCH
+                    if logLine.match(processPCHRegex) {
+                        guard let directoryLine = lines.nextLine() else { return }
+                        let directory = readDirectory(directoryLine)
+                        
+                        // Loop through clang commands
+                        repeat {
+                            guard let clangCommandLine = lines.nextLine() else { return }
+                            if clangCommandLine.match(clangCommandRegex) {
+                                registerSourceForPTHFile(clangCommandLine, directory: directory)
+                            } else {
+                                continue
+                            }
+                            break
+                        } while true
+                    }
                 }
             } while true
         }
