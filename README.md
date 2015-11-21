@@ -1,4 +1,4 @@
-swifty-xcodebuild
+swifty-xcodebuild [![Build Status](https://travis-ci.org/daniel-beard/swifty-xcodebuild.svg)](https://travis-ci.org/daniel-beard/swifty-xcodebuild)
 =================
 
 - Swift re-write of oclint-xcodebuild focusing on performance
